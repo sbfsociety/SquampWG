@@ -373,7 +373,7 @@ int main() {
 
         if (::gamestate == 1) {
             Level(lines1, window, player);
-            text(font, window, 42, "Say my name", 100, 100);
+            text(font, window, 42, "Say my name", 100, 100)
         }
 
         if (::gamestate == 2) {
