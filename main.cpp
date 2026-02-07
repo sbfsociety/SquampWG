@@ -6,9 +6,12 @@
 #include <array>
 #include <cmath>
 #include <ctime>
+#include <iomanip>
 bool ground = true;
 using namespace std;
 bool yes = false;
+
+int frames = 0;
 
 float dt;
 
@@ -23,6 +26,9 @@ bool release = false;
 struct Vec2{
     float x, y;
 };
+
+void text(sf::Font& font, sf::RenderWindow& window, int textSize, string text, float x, float y);
+
 
 class Player{
 private:
@@ -54,7 +60,7 @@ public:
         state = 0;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A)){state = 1; pos.x -= 5.f;}
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D)){state = 2; pos.x += 5.f;}
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && onGround){if (add < 100) add++; space = true;}
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) && onGround){if (add < 100) add+=0.5; space = true;}
         else if (space && !onGround) {
             //cout << "Space held but NOT grounded! pos.y: " << pos.y << endl;
         }
@@ -100,14 +106,32 @@ public:
 
     }
 
-    void Draw(sf::RenderWindow& window){
-
+    void Draw(sf::RenderWindow& window, sf::Font& font){
         float small = 10;
         sf::ConvexShape player;
         player.setPointCount(4);
+        double value;
+        if (-0.8 * add - 10 > -30.f) {
+            value = -0.8 * add - 10;
+        }
+        else {
+            value = -30.f;
+        }
+
+        ::frames++;
+
+        value = (round(value/5))*5;
+
+
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1) << value * -1;
+        std::string result = ss.str();
+
+        text(font, window,  20, result, pos.x, pos.y);
         if (space) {
             player.setPoint(0, sf::Vector2f(pos.x - playerSize.x, pos.y - playerSize.y + small));
             player.setPoint(1, sf::Vector2f(pos.x, pos.y - playerSize.y + small));
+            text(font, window,  20, result, pos.x, pos.y);
             //cout << "Mario\n";
         }
         else{
@@ -118,10 +142,40 @@ public:
         }
         player.setPoint(2, sf::Vector2f(pos.x, pos.y));
         player.setPoint(3, sf::Vector2f(pos.x - playerSize.x, pos.y));
-        player.setFillColor(sf::Color::Red);
+        player.setFillColor(sf::Color{127,127, 127});
         player.setOutlineColor(sf::Color::Black);
         player.setOutlineThickness(2.f);
+
+        //sf::Texture front, back, left, right, jump, fall;
+        //if (!front.loadFromFile("assets/front.jpg")){}
+        //if (!back.loadFromFile("assets/back.jpg")){}
+        //if (!left.loadFromFile("assets/left.jpg")){}
+        //if (!right.loadFromFile("assets/right.jpg")){}
+        //if (!fall.loadFromFile("assets/fall.jpg")){}
+        //if (!jump.loadFromFile("assets/jump.jpg")){}
+
+
+        //front.setSmooth(false);
+        //left.setSmooth(false);
+        //right.setSmooth(false);
+        //fall.setSmooth(false);
+        //jump.setSmooth(false);
+        //back.setSmooth(false);
+
+
+        //sf::Sprite igrac(front);
+
+        //igrac.setPosition({pos.x - 6 - small*2, pos.y - 10- small*4});
+
+        //igrac.setScale({0.3f, 0.3f});
+
+        //if (vel.x > 0){igrac.setTexture(right);}
+        //if (vel.x < 0){igrac.setTexture(left);}
+        //if (vel.y < 0){igrac.setTexture(jump);}
+        //if (vel.y > 0){igrac.setTexture(fall);}
+
         window.draw(player);
+        //window.draw(igrac);
     }
 
 
@@ -145,6 +199,8 @@ public:
     Vec2 saved() const {return save;}
 };
 
+void Rect(sf::RenderWindow& window, Vec2 center, float height, float width, Player& player, Vec2 finish);
+
 class Line {
 public:
     Vec2 helper;
@@ -155,6 +211,7 @@ public:
     bool col = false;
     bool flag = false;
     bool draw = true;
+    bool fill;
 
     Line(Vec2 _b, Vec2 _e) : begin(_b), end(_e) {
         if (_b.x == _e.x){vertical = true; /*cout << "Vertical";*/}
@@ -168,12 +225,18 @@ public:
         else {diagonal = true; /*cout << "Diagonal";*/}
     }
 
+    Line(Vec2 _b, Vec2 _e, bool _draw, bool bottom) : begin(_b), end(_e), draw(_draw), fill(bottom) {
+        if (_b.x == _e.x){vertical = true; /*cout << "Vertical";*/}
+        else if (_b.y == _e.y){horizontal = true; /*cout <<"Horizontal";*/}
+        else {diagonal = true; /*cout << "Diagonal";*/}
+    }
+
     void Collide(Player& player) {
         flag = false;
         col = false;
         if (horizontal) {
             // you bong bong your head here
-            if ((player.get().x >= begin.x - player.playerSize.x*0.24 && player.get().x <= end.x + player.playerSize.x*1.275)) {
+            if ((player.get().x >= begin.x - player.playerSize.x*0.24 + 4 && player.get().x <= end.x + player.playerSize.x*1.275)) {
                 if (player.old.y > end.y + player.playerSize.y && player.get().y <= begin.y + 3 + player.playerSize.y) {
                     player.set({player.get().x, begin.y + player.playerSize.y + 4});
                     flag = true;
@@ -229,6 +292,12 @@ public:
             line.setPoint(1, {end.x, begin.y + width});
             line.setPoint(2, {end.x, end.y});
             line.setPoint(3, {begin.x, end.y});
+            if (fill) {
+                line.setPoint(0, {begin.x, begin.y + 800});
+                line.setPoint(1, {end.x, begin.y + 800});
+                line.setPoint(2, {end.x, end.y});
+                line.setPoint(3, {begin.x, end.y});
+            }
         }
         if (vertical) {
             line.setPoint(0, {begin.x, begin.y});
@@ -237,13 +306,15 @@ public:
             line.setPoint(3, {end.x, end.y});
         }
 
-        line.setFillColor(sf::Color::Red);
-        line.setOutlineColor(sf::Color::Black);
+
+        line.setFillColor(sf::Color({21, 6, 1}));
+        line.setOutlineColor(sf::Color{21, 6, 1 });
         line.setOutlineThickness(2.f);
         if (draw)
             window.draw(line);
     }
 };
+
 void Lines(sf::RenderWindow& window, vector<Line>& lines, Player& player) {
         int colCount = 0;
         for (auto& line : lines) {
@@ -253,7 +324,51 @@ void Lines(sf::RenderWindow& window, vector<Line>& lines, Player& player) {
         }
         if (colCount == 0) {player.Grounded(false);}
     }
+void text(sf::Font& font, sf::RenderWindow& window, int textSize, string text, float x, float y) {
+    sf::Text st(font);
+    st.setString(text);
+    st.setFillColor(sf::Color::White);
+    st.setCharacterSize(textSize);
+    st.setPosition({x, y});
+    window.draw(st);
+}
+void Rect(sf::RenderWindow& window, Vec2 center, float height, float width, Player& player, Vec2 finish) {
+    sf::ConvexShape rect;
+    rect.setPointCount(60); // More points for more oval but overral system is slower then
+    sf::Clock chargeClock;
+    float chargeTimer = 0.f;
 
+    float rX = width;   // horizontal radius
+    float rY = height * 1.3f;  // vertical radius
+
+    for (int i = 0; i < 60; i++) {
+        float angle = i * 2 * 3.14159f / 60; // Divide circle into 16 segments
+        rect.setPoint(i, {
+
+            center.x + rX * cos(angle),
+            center.y + rY * sin(angle)
+        });
+    }
+    /*rect.setPointCount(4);
+    rect.setPoint(0, {center.x - width, center.y + height});
+    rect.setPoint(1, {center.x + width, center.y + height});
+    rect.setPoint(2, {center.x + width, center.y - height});
+    rect.setPoint(3, {center.x - width, center.y - height});*/
+    rect.setFillColor(sf::Color::White);
+    rect.setOutlineColor(sf::Color::Black);
+    if (abs(player.get().x - center.x) < width*1.31 && abs(player.get().y - center.y) < height*1.31) {
+        chargeTimer += chargeClock.restart().asSeconds();
+        if (chargeTimer >= 0.5f) {
+            chargeTimer = 0.f;
+
+        }
+        ::gamestate++;
+        player.set({finish.x, finish.y});
+    }
+
+
+    window.draw(rect);
+}
 void Compensate(Line& line, vector<Line>& lines) {
         if (line.vertical) {
             float plWidth = 4.f; // match player width
@@ -263,26 +378,28 @@ void Compensate(Line& line, vector<Line>& lines) {
 
         if (line.horizontal) {
             float plWidth = 4.f;
-            lines.push_back(Line( {line.begin.x, line.end.y  + plWidth},{line.begin.x, line.begin.y}, true));
-            lines.push_back(Line({line.end.x, line.end.y + plWidth}, {line.end.x, line.end.y}, true));
+            lines.push_back(Line( {line.begin.x, line.end.y  + plWidth},{line.begin.x, line.begin.y}, false));
+            lines.push_back(Line({line.end.x, line.end.y + plWidth}, {line.end.x, line.end.y}, false));
         }
     }
 
-void Level(vector<Line>& lines, sf::RenderWindow& window, Player& player) {
+void Level(vector<Line>& lines, sf::RenderWindow& window, Player& player, sf::Font& font) {
     player.Update();
     Lines(window, lines, player);
     if (player.get().y > 900.f && !player.Ground()){player.set({player.saved().x, player.saved().y});player.speedu({0.f, 0.f});}
-    player.Draw(window);
+    player.Draw(window,font);
 }
 
-void text(sf::Font& font, sf::RenderWindow& window, int textSize, string text, float x, float y) {
-    sf::Text play(font);
-    play.setString(text);
-    play.setFillColor(sf::Color::White);
-    play.setCharacterSize(textSize);
-    play.setPosition({x, y});
-    window.draw(play);
+void Picture(sf::RenderWindow& window, string name, float x, float y, float scale, string ext) {
+    sf::Texture texture;
+    texture.loadFromFile("assets/pics/" + name + ext);
+    sf::Sprite sprite(texture);
+    sprite.setPosition({x, y});
+    sprite.setScale({scale, scale});
+    window.draw(sprite);
 }
+
+
 
 
 
@@ -290,26 +407,56 @@ int main() {
     sf::RenderWindow window(sf::VideoMode({1000, 800}), "Jump king");
     sf::Clock clock;
     window.setFramerateLimit(60);
-    Player player({475.f, 400.f});
+    Player player({150.f, 680.f});
 
     vector<Line> lines;
 
     sf::Font font;
     if (!font.openFromFile("daniel.ttf")){return 1;}
 
+    sf::Font bold;
+    if (!bold.openFromFile("danielbd.ttf")){return 1;}
 
+    sf::Font veryBold;
+    if (!veryBold.openFromFile("danielbk.ttf")){return 1;}
+
+    vector<Vec2> startPoints;
+    startPoints.push_back({100.f, 100.f}); // 0 - Meni
+    startPoints.push_back({135.f,670.f}); // 1 - Nivoi
+    startPoints.push_back({135.f,670.f}); // 2
+
+    sf::Texture background;
+    if (!background.loadFromFile("assets/pics/back.jpg")){return 1;}
+    sf::Sprite backgroundSprite(background);
+    backgroundSprite.setPosition({0.f, 0.f});
 
 
     // lines.push_back(Line({300, 700},{400, 700}));
     // lines.push_back(Line({400, 703},{500, 703}));
 
+    // LEVELS - 1- 30
+
+    // 1 -------------------------------------------------------------------------
+
     vector<Line> lines1;
+    lines1.push_back(Line({100, 700}, {700, 700}));
+    for (int i = 0; i < 1; i++) {
+        Compensate(lines1[i], lines1);
+    }
 
-
+    // 2 -------------------------------------------------------------------------
 
     vector<Line> lines2;
+    lines2.push_back(Line({100, 700}, {300, 700}));
+    lines2.push_back(Line({300, 700},{300, 550}));
+    lines2.push_back(Line({300, 550},{500, 550}));
+    // lines2.push_back(Line({200, 500}, {200, 300}));
 
+    for (int i = 0; i < 3; i++) {
+        Compensate(lines2[i], lines2);
+    }
 
+    // 3 -------------------------------------------------------------------------
 
 
 
@@ -330,8 +477,7 @@ int main() {
             }
             if (const auto* mousePressed = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (mousePressed->button == sf::Mouse::Button::Left) {
-                    // Left click happened
-                    // Do your title screen stuff here
+
                 }
             }
                 if (::gamestate > 0){
@@ -347,8 +493,9 @@ int main() {
                     }
                 }
         }
-        window.clear(sf::Color{7,7,7});
+        window.clear(sf::Color{27,27,27});
 
+        window.draw(backgroundSprite);
 
 
         if (::gamestate == 0) {
@@ -359,7 +506,7 @@ int main() {
             play.setString("Press space to play");
             play.setFillColor(sf::Color::White);
             play.setCharacterSize(42);
-            play.setPosition({300, 275 + float(::frameCounter/2)});
+            play.setPosition({300, 500 + float(::frameCounter/2)});
             window.draw(play);
         }
 
@@ -372,12 +519,16 @@ int main() {
         }*/
 
         if (::gamestate == 1) {
-            Level(lines1, window, player);
-            text(font, window, 42, "Say my name", 100, 100)
+            Rect(window, {600, 670}, 20, 20, player,startPoints[::gamestate]);
+            text(veryBold, window, 28, "Move by hitting A and D", 100, 500);
+            Level(lines1, window, player, font);
         }
 
         if (::gamestate == 2) {
-            Level(lines2, window, player);
+            Rect(window, {500, 520}, 20, 20, player,startPoints[::gamestate]);
+            text(veryBold, window, 28, "Charge your jump with ", 100, 200);
+            Picture(window, "spaces", 480, 166, 0.20, ".png");
+            Level(lines2, window, player, font);
         }
 
 
